@@ -1,18 +1,18 @@
 {
 	"$schema": "https://schemas.wp.org/trunk/block.json",
 	"apiVersion": 3,
-	"name": "weightpal/advisor",
-	"title": "Weightpal AI Advisor",
+	"name": "weightpal/meal-planner",
+	"title": "Weightpal Meal Planner",
 	"category": "weightpal",
-	"icon": "heart",
-	"description": "AI-powered weight loss coaching form with personalized advice, meal plans, and exercise schedules.",
+	"icon": "food",
+	"description": "AI-powered personalized meal planner with dietary preferences and nutrition tracking.",
 	"keywords": [
 		"weightpal",
-		"ai",
-		"weight loss",
-		"fitness",
-		"health",
-		"coaching"
+		"meal",
+		"diet",
+		"nutrition",
+		"meal plan",
+		"food"
 	],
 	"version": "1.0.0",
 	"textdomain": "weightpal",
@@ -28,15 +28,15 @@
 	"attributes": {
 		"title": {
 			"type": "string",
-			"default": "Ask AI for anything."
+			"default": "Personalized Meal Plan Generator"
 		},
 		"description": {
 			"type": "string",
-			"default": "Enter your information below to receive AI-powered coaching with personalized advice, meal plans, and exercise schedules."
+			"default": "Get a customized meal plan based on your dietary preferences, goals, and lifestyle."
 		},
 		"buttonText": {
 			"type": "string",
-			"default": "Ask AI"
+			"default": "Generate My Meal Plan"
 		},
 		"showTitle": {
 			"type": "boolean",
@@ -48,15 +48,19 @@
 		},
 		"backgroundColor": {
 			"type": "string",
-			"default": "#f9f9f9"
+			"default": "#f0f9ff"
 		},
 		"textColor": {
 			"type": "string",
-			"default": "#333333"
+			"default": "#1e293b"
 		},
 		"accentColor": {
 			"type": "string",
 			"default": "#28a745"
+		},
+		"planDuration": {
+			"type": "string",
+			"default": "7"
 		}
 	}
 }

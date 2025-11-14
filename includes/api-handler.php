@@ -55,6 +55,53 @@ function weightpal_register_rest_routes() {
 			),
 		)
 	);
+
+	// Register meal plan endpoint
+	register_rest_route(
+		'weightpal/v1',
+		'/meal-plan',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'weightpal_generate_meal_plan',
+			'permission_callback' => '__return_true',
+			'args'                => array(
+				'dietaryPreferences'     => array(
+					'required'          => false,
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'default'           => '',
+				),
+				'allergies'              => array(
+					'required'          => false,
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_text_field',
+					'default'           => '',
+				),
+				'calorieTarget'          => array(
+					'required'          => true,
+					'type'              => 'integer',
+					'validate_callback' => function( $param ) {
+						return is_numeric( $param ) && $param > 0 && $param <= 10000;
+					},
+					'sanitize_callback' => 'absint',
+				),
+				'planDays'               => array(
+					'required'          => true,
+					'type'              => 'integer',
+					'validate_callback' => function( $param ) {
+						return is_numeric( $param ) && $param > 0 && $param <= 90;
+					},
+					'sanitize_callback' => 'absint',
+				),
+				'additionalPreferences'  => array(
+					'required'          => false,
+					'type'              => 'string',
+					'sanitize_callback' => 'sanitize_textarea_field',
+					'default'           => '',
+				),
+			),
+		)
+	);
 }
 add_action( 'rest_api_init', 'weightpal_register_rest_routes' );
 
@@ -134,6 +181,106 @@ function weightpal_get_ai_advice( $request ) {
 			sprintf(
 				/* translators: %s: error message */
 				__( 'An error occurred: %s', 'weightpal' ),
+				$e->getMessage()
+			),
+			array( 'status' => 500 )
+		);
+	}
+}
+
+/**
+ * Generate meal plan callback
+ *
+ * @param WP_REST_Request $request The REST request object.
+ * @return WP_REST_Response|WP_Error Response or error.
+ */
+function weightpal_generate_meal_plan( $request ) {
+	try {
+		// Get POST data
+		$dietary_preferences    = $request->get_param( 'dietaryPreferences' );
+		$allergies              = $request->get_param( 'allergies' );
+		$calorie_target         = $request->get_param( 'calorieTarget' );
+		$plan_days              = $request->get_param( 'planDays' );
+		$additional_preferences = $request->get_param( 'additionalPreferences' );
+
+		// Get plugin settings
+		$options = get_option( 'weightpal_options' );
+
+		// Check if API key exists
+		if ( empty( $options['gemini_api_key'] ) ) {
+			return new WP_Error(
+				'missing_api_key',
+				__( 'Gemini API key is not configured. Please contact the site administrator.', 'weightpal' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$api_key           = $options['gemini_api_key'];
+		$gemini_model      = ! empty( $options['gemini_model'] ) ? $options['gemini_model'] : 'gemini-1.5-flash';
+		$max_output_tokens = ! empty( $options['max_output_tokens'] ) ? $options['max_output_tokens'] : 2048;
+
+		// Construct system prompt for meal planning
+		$system_prompt = "You are 'Weightpal Meal Planner,' an expert nutritionist and meal planning specialist. Your goal is to create personalized, balanced, and delicious meal plans.\n\n";
+		$system_prompt .= "When creating meal plans, you must:\n";
+		$system_prompt .= "1. Provide detailed daily meal plans with specific meals for breakfast, lunch, dinner, and snacks\n";
+		$system_prompt .= "2. Include approximate calorie counts for each meal\n";
+		$system_prompt .= "3. Ensure nutritional balance (proteins, carbs, healthy fats, vitamins)\n";
+		$system_prompt .= "4. Respect all dietary preferences and allergies mentioned\n";
+		$system_prompt .= "5. Make meals practical, achievable, and budget-friendly unless specified otherwise\n";
+		$system_prompt .= "6. Include simple cooking instructions or meal prep tips when relevant\n";
+		$system_prompt .= "7. Ensure variety across days to prevent meal fatigue\n\n";
+		$system_prompt .= "Always encourage users to adjust portions based on their individual needs and consult healthcare professionals for specific dietary concerns.";
+
+		// Construct user prompt
+		$user_prompt = "Please create a personalized {$plan_days}-day meal plan with the following specifications:\n\n";
+		$user_prompt .= "**Daily Calorie Target:** {$calorie_target} calories\n";
+
+		if ( ! empty( $dietary_preferences ) ) {
+			$user_prompt .= "**Dietary Preferences:** {$dietary_preferences}\n";
+		}
+
+		if ( ! empty( $allergies ) ) {
+			$user_prompt .= "**Food Allergies/Restrictions:** {$allergies}\n";
+		}
+
+		if ( ! empty( $additional_preferences ) ) {
+			$user_prompt .= "**Additional Preferences:** {$additional_preferences}\n";
+		}
+
+		$user_prompt .= "\nPlease format the meal plan clearly with:\n";
+		$user_prompt .= "- Day-by-day breakdown\n";
+		$user_prompt .= "- Meal times (Breakfast, Lunch, Dinner, Snacks)\n";
+		$user_prompt .= "- Specific food items and portions\n";
+		$user_prompt .= "- Approximate calories per meal\n";
+		$user_prompt .= "- Any prep tips or cooking notes\n";
+
+		// Call Gemini API
+		$ai_response = weightpal_call_gemini_api( $api_key, $gemini_model, $system_prompt, $user_prompt, $max_output_tokens );
+
+		// Check for errors
+		if ( is_wp_error( $ai_response ) ) {
+			return $ai_response;
+		}
+
+		// Return successful response
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $ai_response,
+			),
+			200
+		);
+	} catch ( Exception $e ) {
+		// Log the error
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Weightpal Meal Plan Error: ' . $e->getMessage() );
+		}
+
+		return new WP_Error(
+			'meal_plan_exception',
+			sprintf(
+				/* translators: %s: error message */
+				__( 'An error occurred while generating meal plan: %s', 'weightpal' ),
 				$e->getMessage()
 			),
 			array( 'status' => 500 )

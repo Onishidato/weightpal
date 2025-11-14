@@ -7,26 +7,27 @@
 	var TextControl = wp.components.TextControl;
 	var TextareaControl = wp.components.TextareaControl;
 	var ToggleControl = wp.components.ToggleControl;
+	var SelectControl = wp.components.SelectControl;
 	var ColorPicker = wp.components.ColorPicker;
 	var __ = wp.i18n.__;
 	var Fragment = wp.element.Fragment;
 
-	registerBlockType('weightpal/advisor', {
-		title: __('Weightpal AI Advisor', 'weightpal'),
-		icon: 'heart',
+	registerBlockType('weightpal/meal-planner', {
+		title: __('Weightpal Meal Planner', 'weightpal'),
+		icon: 'food',
 		category: 'weightpal',
 		attributes: {
 			title: {
 				type: 'string',
-				default: 'Get Your Personalized Weight Loss Plan'
+				default: 'Personalized Meal Plan Generator'
 			},
 			description: {
 				type: 'string',
-				default: 'Enter your information below to receive AI-powered coaching with personalized advice, meal plans, and exercise schedules.'
+				default: 'Get a customized meal plan based on your dietary preferences, goals, and lifestyle.'
 			},
 			buttonText: {
 				type: 'string',
-				default: 'Get My Plan'
+				default: 'Generate My Meal Plan'
 			},
 			showTitle: {
 				type: 'boolean',
@@ -38,15 +39,19 @@
 			},
 			backgroundColor: {
 				type: 'string',
-				default: '#f9f9f9'
+				default: '#f0f9ff'
 			},
 			textColor: {
 				type: 'string',
-				default: '#333333'
+				default: '#1e293b'
 			},
 			accentColor: {
 				type: 'string',
 				default: '#28a745'
+			},
+			planDuration: {
+				type: 'string',
+				default: '7'
 			}
 		},
 
@@ -55,7 +60,7 @@
 			var setAttributes = props.setAttributes;
 
 			var blockProps = useBlockProps({
-				className: 'weightpal-advisor-block',
+				className: 'weightpal-meal-planner-block',
 				style: {
 					backgroundColor: attributes.backgroundColor,
 					color: attributes.textColor
@@ -100,13 +105,26 @@
 								onChange: function (value) {
 									setAttributes({ description: value });
 								},
-								rows: 4
+								rows: 3
 							}),
 						el(TextControl, {
 							label: __('Button Text', 'weightpal'),
 							value: attributes.buttonText,
 							onChange: function (value) {
 								setAttributes({ buttonText: value });
+							}
+						}),
+						el(SelectControl, {
+							label: __('Default Plan Duration', 'weightpal'),
+							value: attributes.planDuration,
+							options: [
+								{ label: __('3 Days', 'weightpal'), value: '3' },
+								{ label: __('7 Days', 'weightpal'), value: '7' },
+								{ label: __('14 Days', 'weightpal'), value: '14' },
+								{ label: __('30 Days', 'weightpal'), value: '30' }
+							],
+							onChange: function (value) {
+								setAttributes({ planDuration: value });
 							}
 						})
 					),
@@ -148,47 +166,47 @@
 					blockProps,
 					el(
 						'div',
-						{ className: 'weightpal-advisor-container' },
+						{ className: 'weightpal-meal-planner-container' },
 						attributes.showTitle &&
-							el('h2', { className: 'weightpal-advisor-title' }, attributes.title),
+							el('h2', { className: 'weightpal-meal-planner-title' }, attributes.title),
 						attributes.showDescription &&
-							el('p', { className: 'weightpal-advisor-description' }, attributes.description),
+							el('p', { className: 'weightpal-meal-planner-description' }, attributes.description),
 						el(
 							'div',
-							{ className: 'weightpal-advisor-form-preview' },
+							{ className: 'weightpal-meal-planner-form-preview' },
 							el(
 								'div',
-								{ className: 'weightpal-form-row' },
-								el(
-									'div',
-									{ className: 'weightpal-form-field' },
-									el('label', {}, __('Weight (kg)', 'weightpal'), ' ', el('span', { className: 'required' }, '*')),
-									el('input', { type: 'number', placeholder: __('e.g., 75', 'weightpal'), disabled: true })
-								),
-								el(
-									'div',
-									{ className: 'weightpal-form-field' },
-									el('label', {}, __('Height (cm)', 'weightpal'), ' ', el('span', { className: 'required' }, '*')),
-									el('input', { type: 'number', placeholder: __('e.g., 175', 'weightpal'), disabled: true })
+								{ className: 'weightpal-form-field' },
+								el('label', {}, __('Dietary Preferences', 'weightpal')),
+								el('input', { type: 'text', placeholder: __('e.g., Vegetarian, Vegan, Keto', 'weightpal'), disabled: true })
+							),
+							el(
+								'div',
+								{ className: 'weightpal-form-field' },
+								el('label', {}, __('Food Allergies / Restrictions', 'weightpal')),
+								el('input', { type: 'text', placeholder: __('e.g., Nuts, Dairy, Gluten', 'weightpal'), disabled: true })
+							),
+							el(
+								'div',
+								{ className: 'weightpal-form-field' },
+								el('label', {}, __('Daily Calorie Target', 'weightpal')),
+								el('input', { type: 'number', placeholder: __('e.g., 2000', 'weightpal'), disabled: true })
+							),
+							el(
+								'div',
+								{ className: 'weightpal-form-field' },
+								el('label', {}, __('Number of Days', 'weightpal')),
+								el('select', { disabled: true }, 
+									el('option', {}, attributes.planDuration + ' Days')
 								)
 							),
 							el(
 								'div',
 								{ className: 'weightpal-form-field' },
-								el('label', {}, __('Daily Routine', 'weightpal'), ' ', el('span', { className: 'required' }, '*')),
+								el('label', {}, __('Additional Preferences', 'weightpal')),
 								el('textarea', {
 									rows: 3,
-									placeholder: __('Describe your typical daily routine...', 'weightpal'),
-									disabled: true
-								})
-							),
-							el(
-								'div',
-								{ className: 'weightpal-form-field' },
-								el('label', {}, __('Your Goal / Question', 'weightpal'), ' ', el('span', { className: 'required' }, '*')),
-								el('textarea', {
-									rows: 4,
-									placeholder: __('What would you like to achieve?', 'weightpal'),
+									placeholder: __('e.g., Quick meals, meal prep friendly, budget-friendly...', 'weightpal'),
 									disabled: true
 								})
 							),
@@ -209,7 +227,7 @@
 						el(
 							'p',
 							{ className: 'weightpal-editor-notice' },
-							el('em', {}, __('👆 This is a preview. The form will be interactive on the frontend.', 'weightpal'))
+							el('em', {}, __('👆 This is a preview. The meal planner will be interactive on the frontend.', 'weightpal'))
 						)
 					)
 				)

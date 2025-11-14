@@ -1,25 +1,25 @@
-/* Weightpal Advisor Block - Frontend Styles */
+/* Weightpal Meal Planner Block - Frontend Styles */
 
-.weightpal-advisor-block {
+.weightpal-meal-planner-block {
 	padding: 40px;
 	border-radius: 12px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	margin: 20px 0;
 }
 
-.weightpal-advisor-container {
-	max-width: 800px;
+.weightpal-meal-planner-container {
+	max-width: 900px;
 	margin: 0 auto;
 }
 
-.weightpal-advisor-title {
+.weightpal-meal-planner-title {
 	font-size: 28px;
 	font-weight: 700;
 	margin: 0 0 15px 0;
 	text-align: center;
 }
 
-.weightpal-advisor-description {
+.weightpal-meal-planner-description {
 	font-size: 16px;
 	line-height: 1.6;
 	margin: 0 0 30px 0;
@@ -28,22 +28,11 @@
 }
 
 /* Form Styles */
-.weightpal-advisor-form,
-.weightpal-advisor-form-preview {
+.weightpal-meal-planner-form-preview,
+#weightpal-meal-planner-form {
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
-}
-
-.weightpal-form-row {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 20px;
-}
-
-.weightpal-form-field {
-	display: flex;
-	flex-direction: column;
 }
 
 .weightpal-form-field label {
@@ -60,7 +49,9 @@
 }
 
 .weightpal-form-field input,
-.weightpal-form-field textarea {
+.weightpal-form-field textarea,
+.weightpal-form-field select {
+	width: 100%;
 	padding: 12px 15px;
 	border: 2px solid #ddd;
 	border-radius: 8px;
@@ -71,7 +62,8 @@
 }
 
 .weightpal-form-field input:focus,
-.weightpal-form-field textarea:focus {
+.weightpal-form-field textarea:focus,
+.weightpal-form-field select:focus {
 	outline: none;
 	border-color: #28a745;
 	box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
@@ -142,7 +134,7 @@
 	color: #666;
 }
 
-/* Response Styles */
+/* Response Animation */
 .weightpal-response {
 	animation: weightpal-fadein 0.5s ease-in;
 }
@@ -158,47 +150,25 @@
 	}
 }
 
-.weightpal-bmi-badge {
-	display: inline-flex;
+/* Meal Plan Header */
+.weightpal-meal-plan-header {
+	display: flex;
+	justify-content: space-between;
 	align-items: center;
-	gap: 10px;
-	padding: 12px 20px;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	color: #fff;
-	border-radius: 50px;
-	font-weight: 600;
 	margin-bottom: 25px;
-	box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+	flex-wrap: wrap;
+	gap: 15px;
 }
 
-.weightpal-bmi-value {
-	font-size: 20px;
-	padding: 5px 15px;
-	background: rgba(255, 255, 255, 0.2);
-	border-radius: 20px;
+.weightpal-meal-plan-header h3 {
+	margin: 0;
+	font-size: 24px;
+	font-weight: 700;
+	color: #28a745;
 }
 
-.weightpal-bmi-value.underweight {
-	background: #3498db;
-	color: #fff;
-}
-
-.weightpal-bmi-value.normal {
-	background: #2ecc71;
-	color: #fff;
-}
-
-.weightpal-bmi-value.overweight {
-	background: #f39c12;
-	color: #fff;
-}
-
-.weightpal-bmi-value.obese {
-	background: #e74c3c;
-	color: #fff;
-}
-
-.weightpal-advice-content {
+/* Meal Plan Display */
+.weightpal-meal-plan-content {
 	background: #fff;
 	padding: 30px;
 	border-radius: 8px;
@@ -208,20 +178,61 @@
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.weightpal-advice-content p {
+.weightpal-meal-plan-content p {
 	margin: 0 0 15px 0;
 }
 
-.weightpal-advice-content p:last-child {
+.weightpal-meal-plan-content p:last-child {
 	margin-bottom: 0;
 }
 
-.weightpal-advice-content strong {
+.weightpal-meal-plan-content strong {
 	color: #28a745;
 	font-weight: 700;
 }
 
-.weightpal-new-query-button,
+/* Action Buttons */
+.weightpal-meal-plan-actions {
+	display: flex;
+	gap: 15px;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.weightpal-new-plan-button,
+.weightpal-print-button {
+	padding: 12px 25px;
+	font-size: 16px;
+	font-weight: 600;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.weightpal-new-plan-button {
+	background: transparent;
+	color: #28a745;
+	border: 2px solid #28a745;
+}
+
+.weightpal-new-plan-button:hover {
+	background: #28a745;
+	color: #fff;
+	transform: translateY(-1px);
+}
+
+.weightpal-print-button {
+	background: transparent;
+	color: #666;
+	border: 2px solid #ddd;
+}
+
+.weightpal-print-button:hover {
+	background: #f8f9fa;
+	border-color: #999;
+	transform: translateY(-1px);
+}
+
 .weightpal-try-again-button {
 	padding: 12px 25px;
 	font-size: 16px;
@@ -234,13 +245,13 @@
 	transition: all 0.3s ease;
 }
 
-.weightpal-new-query-button:hover,
 .weightpal-try-again-button:hover {
 	background: #28a745;
 	color: #fff;
+	transform: translateY(-1px);
 }
 
-/* Error Styles */
+/* Error State */
 .weightpal-error {
 	text-align: center;
 	padding: 30px;
@@ -257,25 +268,17 @@
 	font-size: 16px;
 }
 
-/* Editor Preview Notice */
-.weightpal-editor-notice {
-	margin-top: 20px;
-	text-align: center;
-	color: #666;
-	font-size: 14px;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
-	.weightpal-advisor-block {
+	.weightpal-meal-planner-block {
 		padding: 25px 20px;
 	}
 
-	.weightpal-advisor-title {
+	.weightpal-meal-planner-title {
 		font-size: 24px;
 	}
 
-	.weightpal-advisor-description {
+	.weightpal-meal-planner-description {
 		font-size: 14px;
 	}
 
@@ -289,30 +292,46 @@
 		padding: 12px 25px;
 	}
 
-	.weightpal-bmi-badge {
+	.weightpal-meal-plan-header {
 		flex-direction: column;
-		gap: 5px;
-		padding: 15px;
+		align-items: flex-start;
 	}
 
-	.weightpal-advice-content {
+	.weightpal-meal-plan-content {
 		padding: 20px;
 		font-size: 14px;
+	}
+
+	.weightpal-meal-plan-actions {
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.weightpal-new-plan-button,
+	.weightpal-print-button {
+		width: 100%;
 	}
 }
 
 /* Print Styles */
 @media print {
-	.weightpal-advisor-form,
+	.weightpal-meal-planner-form,
 	.weightpal-loading,
 	.weightpal-error,
-	.weightpal-new-query-button,
+	.weightpal-new-plan-button,
+	.weightpal-print-button,
 	.weightpal-try-again-button,
-	.weightpal-submit-button {
+	.weightpal-submit-button,
+	.weightpal-meal-plan-actions {
 		display: none !important;
 	}
 
 	.weightpal-response {
 		display: block !important;
+	}
+
+	.weightpal-meal-planner-block {
+		box-shadow: none;
+		border: 1px solid #ddd;
 	}
 }

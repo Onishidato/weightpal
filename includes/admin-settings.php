@@ -37,20 +37,37 @@ function weightpal_settings_init() {
 		array(
 			'sanitize_callback' => 'weightpal_sanitize_options',
 			'default'           => array(
-				'gemini_api_key'    => '',
-				'gemini_model'      => 'gemini-1.5-flash',
-				'system_prompt'     => weightpal_get_default_system_prompt(),
-				'max_output_tokens' => 2048,
-				'max_input_tokens'  => 8192,
+				'gemini_api_key'          => '',
+				'gemini_model'            => 'gemini-1.5-flash',
+				'max_output_tokens'       => 2048,
+				'max_input_tokens'        => 8192,
+				'advisor_system_prompt'   => weightpal_get_default_system_prompt(),
+				'meal_planner_system_prompt' => weightpal_get_default_meal_planner_prompt(),
 			),
 		)
 	);
 
-	// Add settings section
+	// Add General Settings section
 	add_settings_section(
-		'weightpal_section',                          // Section ID
-		__( 'Weightpal AI Configuration', 'weightpal' ),  // Section title
-		'weightpal_section_callback',                     // Callback function
+		'weightpal_general_section',                      // Section ID
+		__( 'General Settings', 'weightpal' ),            // Section title
+		'weightpal_general_section_callback',             // Callback function
+		'weightpal'                                       // Page slug
+	);
+
+	// Add AI Advisor Settings section
+	add_settings_section(
+		'weightpal_advisor_section',                      // Section ID
+		__( 'Weightpal AI Advisor Settings', 'weightpal' ), // Section title
+		'weightpal_advisor_section_callback',             // Callback function
+		'weightpal'                                       // Page slug
+	);
+
+	// Add Meal Planner Settings section
+	add_settings_section(
+		'weightpal_meal_planner_section',                 // Section ID
+		__( 'Weightpal Meal Planner Settings', 'weightpal' ), // Section title
+		'weightpal_meal_planner_section_callback',        // Callback function
 		'weightpal'                                       // Page slug
 	);
 
