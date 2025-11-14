@@ -1,0 +1,97 @@
+/* Weightpal Advisor Block - Editor Styles */
+
+.editor-styles-wrapper .weightpal-advisor-block {
+	padding: 40px;
+	border-radius: 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	margin: 20px 0;
+}
+
+.editor-styles-wrapper .weightpal-advisor-container {
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.editor-styles-wrapper .weightpal-advisor-title {
+	font-size: 28px;
+	font-weight: 700;
+	margin: 0 0 15px 0;
+	text-align: center;
+}
+
+.editor-styles-wrapper .weightpal-advisor-description {
+	font-size: 16px;
+	line-height: 1.6;
+	margin: 0 0 30px 0;
+	text-align: center;
+	opacity: 0.9;
+}
+
+.editor-styles-wrapper .weightpal-advisor-form-preview {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.editor-styles-wrapper .weightpal-form-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+}
+
+.editor-styles-wrapper .weightpal-form-field {
+	display: flex;
+	flex-direction: column;
+}
+
+.editor-styles-wrapper .weightpal-form-field label {
+	font-weight: 600;
+	margin-bottom: 8px;
+	font-size: 14px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.editor-styles-wrapper .weightpal-form-field .required {
+	color: #dc3232;
+}
+
+.editor-styles-wrapper .weightpal-form-field input,
+.editor-styles-wrapper .weightpal-form-field textarea {
+	padding: 12px 15px;
+	border: 2px solid #ddd;
+	border-radius: 8px;
+	font-size: 16px;
+	font-family: inherit;
+	background-color: #fff;
+}
+
+.editor-styles-wrapper .weightpal-form-field textarea {
+	resize: vertical;
+	min-height: 80px;
+}
+
+.editor-styles-wrapper .weightpal-submit-button {
+	padding: 15px 30px;
+	font-size: 18px;
+	font-weight: 600;
+	color: #fff;
+	border: 2px solid;
+	border-radius: 8px;
+	cursor: not-allowed;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-top: 10px;
+	opacity: 0.8;
+}
+
+.editor-styles-wrapper .weightpal-editor-notice {
+	margin-top: 20px;
+	text-align: center;
+	color: #666;
+	font-size: 14px;
+	padding: 15px;
+	background: #f0f0f1;
+	border-radius: 8px;
+}

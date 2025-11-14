@@ -28,7 +28,9 @@ function weightpal_register_rest_routes() {
 					'validate_callback' => function( $param ) {
 						return is_numeric( $param ) && $param > 0;
 					},
-					'sanitize_callback' => 'floatval',
+					'sanitize_callback' => function( $param ) {
+						return floatval( $param );
+					},
 				),
 				'height'    => array(
 					'required'          => true,
@@ -36,7 +38,9 @@ function weightpal_register_rest_routes() {
 					'validate_callback' => function( $param ) {
 						return is_numeric( $param ) && $param > 0;
 					},
-					'sanitize_callback' => 'floatval',
+					'sanitize_callback' => function( $param ) {
+						return floatval( $param );
+					},
 				),
 				'routine'   => array(
 					'required'          => true,
@@ -61,11 +65,12 @@ add_action( 'rest_api_init', 'weightpal_register_rest_routes' );
  * @return WP_REST_Response|WP_Error Response or error.
  */
 function weightpal_get_ai_advice( $request ) {
-	// Get POST data (already validated and sanitized by REST API)
-	$weight     = $request->get_param( 'weight' );
-	$height     = $request->get_param( 'height' );
-	$routine    = $request->get_param( 'routine' );
-	$user_query = $request->get_param( 'userQuery' );
+	try {
+		// Get POST data (already validated and sanitized by REST API)
+		$weight     = $request->get_param( 'weight' );
+		$height     = $request->get_param( 'height' );
+		$routine    = $request->get_param( 'routine' );
+		$user_query = $request->get_param( 'userQuery' );
 
 	// Calculate BMI
 	// BMI = weight (kg) / (height (m))^2
@@ -87,6 +92,7 @@ function weightpal_get_ai_advice( $request ) {
 	}
 
 	$api_key           = $options['gemini_api_key'];
+	$gemini_model      = ! empty( $options['gemini_model'] ) ? $options['gemini_model'] : 'gemini-1.5-flash';
 	$system_prompt     = ! empty( $options['system_prompt'] ) ? $options['system_prompt'] : weightpal_get_default_system_prompt();
 	$max_output_tokens = ! empty( $options['max_output_tokens'] ) ? $options['max_output_tokens'] : 2048;
 
@@ -101,7 +107,7 @@ function weightpal_get_ai_advice( $request ) {
 	);
 
 	// Call Gemini API
-	$ai_response = weightpal_call_gemini_api( $api_key, $system_prompt, $user_prompt, $max_output_tokens );
+	$ai_response = weightpal_call_gemini_api( $api_key, $gemini_model, $system_prompt, $user_prompt, $max_output_tokens );
 
 	// Check for errors
 	if ( is_wp_error( $ai_response ) ) {
@@ -117,20 +123,82 @@ function weightpal_get_ai_advice( $request ) {
 		),
 		200
 	);
+	} catch ( Exception $e ) {
+		// Log the error
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Weightpal API Error: ' . $e->getMessage() );
+		}
+
+		return new WP_Error(
+			'api_exception',
+			sprintf(
+				/* translators: %s: error message */
+				__( 'An error occurred: %s', 'weightpal' ),
+				$e->getMessage()
+			),
+			array( 'status' => 500 )
+		);
+	}
 }
 
 /**
  * Call Gemini API
  *
- * @param string $api_key         The Gemini API key.
- * @param string $system_prompt   The system prompt.
- * @param string $user_prompt     The user prompt.
+ * @param string $api_key          The Gemini API key.
+ * @param string $model            The Gemini model to use.
+ * @param string $system_prompt    The system prompt.
+ * @param string $user_prompt      The user prompt.
  * @param int    $max_output_tokens Maximum output tokens.
  * @return string|WP_Error AI response text or error.
  */
-function weightpal_call_gemini_api( $api_key, $system_prompt, $user_prompt, $max_output_tokens ) {
-	// Gemini API endpoint
-	$api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' . $api_key;
+function weightpal_call_gemini_api( $api_key, $model, $system_prompt, $user_prompt, $max_output_tokens ) {
+	// Increase PHP execution time limit if needed
+	$original_time_limit = ini_get( 'max_execution_time' );
+	if ( $original_time_limit > 0 && $original_time_limit < 180 ) {
+		@set_time_limit( 180 );
+	}
+
+	// Gemini API endpoint - Using v1 API with selected model
+	$api_url = 'https://generativelanguage.googleapis.com/v1/models/' . $model . ':generateContent?key=' . $api_key;
+
+	// Retry configuration
+	$max_retries = 3;
+	$retry_delay = 2; // seconds
+
+	for ( $attempt = 1; $attempt <= $max_retries; $attempt++ ) {
+		$response = weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens );
+
+		// If not an error, return the response
+		if ( ! is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		// Check if it's a retryable error (503 or timeout)
+		$error_data = $response->get_error_data();
+		$is_retryable = isset( $error_data['status'] ) && ( $error_data['status'] === 503 || $error_data['status'] === 504 );
+
+		// If it's the last attempt or not retryable, return the error
+		if ( $attempt === $max_retries || ! $is_retryable ) {
+			return $response;
+		}
+
+		// Wait before retrying (exponential backoff)
+		sleep( $retry_delay * $attempt );
+	}
+
+	return $response;
+}
+
+/**
+ * Make a single request to Gemini API
+ *
+ * @param string $api_url          The API URL.
+ * @param string $system_prompt    The system prompt.
+ * @param string $user_prompt      The user prompt.
+ * @param int    $max_output_tokens Maximum output tokens.
+ * @return string|WP_Error AI response text or error.
+ */
+function weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens ) {
 
 	// Prepare request body
 	$body = array(
@@ -177,12 +245,17 @@ function weightpal_call_gemini_api( $api_key, $system_prompt, $user_prompt, $max
 				'Content-Type' => 'application/json',
 			),
 			'body'    => wp_json_encode( $body ),
-			'timeout' => 60,
+			'timeout' => 120, // Increased to 120 seconds for longer responses
 		)
 	);
 
 	// Check for request errors
 	if ( is_wp_error( $response ) ) {
+		// Log error for debugging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Weightpal API Request Error: ' . $response->get_error_message() );
+		}
+
 		return new WP_Error(
 			'api_request_failed',
 			sprintf(
@@ -190,7 +263,7 @@ function weightpal_call_gemini_api( $api_key, $system_prompt, $user_prompt, $max
 				__( 'Failed to connect to Gemini API: %s', 'weightpal' ),
 				$response->get_error_message()
 			),
-			array( 'status' => 500 )
+			array( 'status' => 503 )
 		);
 	}
 
@@ -205,14 +278,23 @@ function weightpal_call_gemini_api( $api_key, $system_prompt, $user_prompt, $max
 			? $error_data['error']['message'] 
 			: __( 'Unknown API error', 'weightpal' );
 
+		// Log error for debugging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf( 'Weightpal Gemini API Error %d: %s', $response_code, $error_message ) );
+		}
+
+		// Provide user-friendly messages for common errors
+		if ( $response_code === 503 ) {
+			$error_message = __( 'The AI service is currently experiencing high demand. Please try again in a few moments.', 'weightpal' );
+		} elseif ( $response_code === 429 ) {
+			$error_message = __( 'API rate limit exceeded. Please wait a moment and try again.', 'weightpal' );
+		} elseif ( $response_code === 401 || $response_code === 403 ) {
+			$error_message = __( 'API authentication failed. Please check your API key in the plugin settings.', 'weightpal' );
+		}
+
 		return new WP_Error(
 			'api_error',
-			sprintf(
-				/* translators: 1: HTTP status code, 2: error message */
-				__( 'Gemini API returned error %1$d: %2$s', 'weightpal' ),
-				$response_code,
-				$error_message
-			),
+			$error_message,
 			array( 'status' => $response_code )
 		);
 	}

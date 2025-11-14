@@ -1,0 +1,62 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 2,
+	"name": "weightpal/advisor",
+	"title": "Weightpal AI Advisor",
+	"category": "weightpal",
+	"icon": "heart",
+	"description": "AI-powered weight loss coaching form with personalized advice, meal plans, and exercise schedules.",
+	"keywords": [
+		"weightpal",
+		"ai",
+		"weight loss",
+		"fitness",
+		"health",
+		"coaching"
+	],
+	"version": "1.0.0",
+	"textdomain": "weightpal",
+	"supports": {
+		"html": false,
+		"align": true,
+		"alignWide": true,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"attributes": {
+		"title": {
+			"type": "string",
+			"default": "Get Your Personalized Weight Loss Plan"
+		},
+		"description": {
+			"type": "string",
+			"default": "Enter your information below to receive AI-powered coaching with personalized advice, meal plans, and exercise schedules."
+		},
+		"buttonText": {
+			"type": "string",
+			"default": "Get My Plan"
+		},
+		"showTitle": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDescription": {
+			"type": "boolean",
+			"default": true
+		},
+		"backgroundColor": {
+			"type": "string",
+			"default": "#f9f9f9"
+		},
+		"textColor": {
+			"type": "string",
+			"default": "#333333"
+		},
+		"accentColor": {
+			"type": "string",
+			"default": "#0073aa"
+		}
+	}
+}

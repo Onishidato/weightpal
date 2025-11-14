@@ -38,6 +38,7 @@ function weightpal_settings_init() {
 			'sanitize_callback' => 'weightpal_sanitize_options',
 			'default'           => array(
 				'gemini_api_key'    => '',
+				'gemini_model'      => 'gemini-1.5-flash',
 				'system_prompt'     => weightpal_get_default_system_prompt(),
 				'max_output_tokens' => 2048,
 				'max_input_tokens'  => 8192,
@@ -58,6 +59,15 @@ function weightpal_settings_init() {
 		'weightpal_gemini_api_key',                   // Field ID
 		__( 'Gemini API Key', 'weightpal' ),          // Field title
 		'weightpal_api_key_render',                   // Callback function
+		'weightpal',                                  // Page slug
+		'weightpal_section'                           // Section ID
+	);
+
+	// Add Gemini Model field
+	add_settings_field(
+		'weightpal_gemini_model',                     // Field ID
+		__( 'Gemini Model', 'weightpal' ),            // Field title
+		'weightpal_gemini_model_render',              // Callback function
 		'weightpal',                                  // Page slug
 		'weightpal_section'                           // Section ID
 	);
@@ -102,6 +112,10 @@ function weightpal_sanitize_options( $input ) {
 
 	if ( isset( $input['gemini_api_key'] ) ) {
 		$sanitized['gemini_api_key'] = sanitize_text_field( $input['gemini_api_key'] );
+	}
+
+	if ( isset( $input['gemini_model'] ) ) {
+		$sanitized['gemini_model'] = sanitize_text_field( $input['gemini_model'] );
 	}
 
 	if ( isset( $input['system_prompt'] ) ) {
@@ -168,6 +182,171 @@ function weightpal_api_key_render() {
 }
 
 /**
+ * Fetch available Gemini models from API
+ *
+ * @param string $api_key The Gemini API key.
+ * @return array Array of available models or empty array on error.
+ */
+function weightpal_fetch_gemini_models( $api_key ) {
+	if ( empty( $api_key ) ) {
+		return array();
+	}
+
+	// Check for cached models (cache for 1 hour)
+	$cache_key = 'weightpal_gemini_models_' . md5( $api_key );
+	$cached_models = get_transient( $cache_key );
+
+	if ( false !== $cached_models ) {
+		return $cached_models;
+	}
+
+	// Fetch models from API
+	$api_url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . $api_key;
+	$response = wp_remote_get( $api_url, array( 'timeout' => 10 ) );
+
+	if ( is_wp_error( $response ) ) {
+		return array();
+	}
+
+	$body = wp_remote_retrieve_body( $response );
+	$data = json_decode( $body, true );
+
+	if ( ! isset( $data['models'] ) || ! is_array( $data['models'] ) ) {
+		return array();
+	}
+
+	$models = array();
+	foreach ( $data['models'] as $model ) {
+		// Only include models that support generateContent
+		if ( isset( $model['name'] ) && isset( $model['supportedGenerationMethods'] ) ) {
+			if ( in_array( 'generateContent', $model['supportedGenerationMethods'], true ) ) {
+				// Extract model name (remove 'models/' prefix)
+				$model_name = str_replace( 'models/', '', $model['name'] );
+				$display_name = isset( $model['displayName'] ) ? $model['displayName'] : $model_name;
+				$models[ $model_name ] = $display_name;
+			}
+		}
+	}
+
+	// Cache the results for 1 hour
+	set_transient( $cache_key, $models, HOUR_IN_SECONDS );
+
+	return $models;
+}
+
+/**
+ * Render Gemini Model field
+ */
+function weightpal_gemini_model_render() {
+	$options = get_option( 'weightpal_options' );
+	$api_key = isset( $options['gemini_api_key'] ) ? $options['gemini_api_key'] : '';
+	$selected_model = isset( $options['gemini_model'] ) ? $options['gemini_model'] : 'gemini-1.5-flash';
+
+	// Fetch available models
+	$models = weightpal_fetch_gemini_models( $api_key );
+
+	// Default models if API fetch fails
+	$default_models = array(
+		'gemini-1.5-flash'   => 'Gemini 1.5 Flash',
+		'gemini-1.5-pro'     => 'Gemini 1.5 Pro',
+		'gemini-1.0-pro'     => 'Gemini 1.0 Pro',
+	);
+
+	// Use fetched models or fall back to defaults
+	$available_models = ! empty( $models ) ? $models : $default_models;
+	?>
+	<select 
+		name="weightpal_options[gemini_model]" 
+		id="weightpal_gemini_model"
+		class="regular-text"
+	>
+		<?php foreach ( $available_models as $model_id => $model_name ) : ?>
+			<option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $selected_model, $model_id ); ?>>
+				<?php echo esc_html( $model_name ); ?>
+			</option>
+		<?php endforeach; ?>
+	</select>
+	
+	<?php if ( ! empty( $api_key ) && ! empty( $models ) ) : ?>
+		<p class="description" style="color: #46b450;">
+			<?php
+			printf(
+				/* translators: %d: number of models */
+				esc_html( _n( '%d model available', '%d models available', count( $models ), 'weightpal' ) ),
+				count( $models )
+			);
+			?>
+		</p>
+	<?php elseif ( ! empty( $api_key ) ) : ?>
+		<p class="description" style="color: #dc3232;">
+			<?php esc_html_e( 'Unable to fetch models from API. Using default models.', 'weightpal' ); ?>
+		</p>
+	<?php else : ?>
+		<p class="description">
+			<?php esc_html_e( 'Enter your API key above and save to fetch available models.', 'weightpal' ); ?>
+		</p>
+	<?php endif; ?>
+
+	<p class="description">
+		<?php esc_html_e( 'Select which Gemini model to use for generating responses.', 'weightpal' ); ?>
+		<button 
+			type="button" 
+			class="button button-small" 
+			id="weightpal-refresh-models"
+			style="margin-left: 10px;"
+			<?php echo empty( $api_key ) ? 'disabled' : ''; ?>
+		>
+			<?php esc_html_e( 'Refresh Models', 'weightpal' ); ?>
+		</button>
+	</p>
+	
+	<script>
+	jQuery(document).ready(function($) {
+		$('#weightpal-refresh-models').on('click', function(e) {
+			e.preventDefault();
+			var button = $(this);
+			button.prop('disabled', true).text('<?php esc_html_e( 'Refreshing...', 'weightpal' ); ?>');
+			
+			// Clear the cache by saving settings with a special flag
+			$.post(ajaxurl, {
+				action: 'weightpal_refresh_models',
+				nonce: '<?php echo wp_create_nonce( 'weightpal_refresh_models' ); ?>'
+			}, function(response) {
+				if (response.success) {
+					location.reload();
+				} else {
+					button.prop('disabled', false).text('<?php esc_html_e( 'Refresh Models', 'weightpal' ); ?>');
+					alert('<?php esc_html_e( 'Failed to refresh models. Please try again.', 'weightpal' ); ?>');
+				}
+			});
+		});
+	});
+	</script>
+	<?php
+}
+
+/**
+ * AJAX handler to refresh models
+ */
+function weightpal_ajax_refresh_models() {
+	check_ajax_referer( 'weightpal_refresh_models', 'nonce' );
+
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error();
+	}
+
+	$options = get_option( 'weightpal_options' );
+	$api_key = isset( $options['gemini_api_key'] ) ? $options['gemini_api_key'] : '';
+
+	// Clear the cache
+	$cache_key = 'weightpal_gemini_models_' . md5( $api_key );
+	delete_transient( $cache_key );
+
+	wp_send_json_success();
+}
+add_action( 'wp_ajax_weightpal_refresh_models', 'weightpal_ajax_refresh_models' );
+
+/**
  * Render System Prompt field
  */
 function weightpal_system_prompt_render() {
@@ -206,7 +385,7 @@ function weightpal_max_output_tokens_render() {
 		value="<?php echo esc_attr( $max_output_tokens ); ?>" 
 		class="regular-text"
 		min="1"
-		max="32768"
+		max="1,048,576"
 		step="1"
 	/>
 	<p class="description">
@@ -229,7 +408,7 @@ function weightpal_max_input_tokens_render() {
 		value="<?php echo esc_attr( $max_input_tokens ); ?>" 
 		class="regular-text"
 		min="1"
-		max="32768"
+		max="1,048,576"
 		step="1"
 	/>
 	<p class="description">

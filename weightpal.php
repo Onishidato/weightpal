@@ -3,8 +3,8 @@
  * Plugin Name: Weightpal
  * Plugin URI: https://example.com/weightpal
  * Description: AI-powered weight loss coaching using Google Gemini API. Provides personalized advice, meal plans, and exercise schedules.
- * Version: 1.0.0
- * Author: Your Name
+ * Version: 1.0.2
+ * Author: Ken Vu
  * Author URI: https://example.com
  * Text Domain: weightpal
  * Domain Path: /languages
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'WEIGHTPAL_VERSION', '1.0.0' );
+define( 'WEIGHTPAL_VERSION', '1.0.2' );
 define( 'WEIGHTPAL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WEIGHTPAL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WEIGHTPAL_PLUGIN_FILE', __FILE__ );
@@ -32,6 +32,7 @@ function weightpal_activate() {
 	// Set default options on activation
 	$default_options = array(
 		'gemini_api_key'      => '',
+		'gemini_model'        => 'gemini-1.5-flash',
 		'system_prompt'       => weightpal_get_default_system_prompt(),
 		'max_output_tokens'   => 2048,
 		'max_input_tokens'    => 8192,
@@ -75,6 +76,9 @@ if ( is_admin() ) {
 
 // REST API Handler
 require_once WEIGHTPAL_PLUGIN_DIR . 'includes/api-handler.php';
+
+// Gutenberg Block Registration
+require_once WEIGHTPAL_PLUGIN_DIR . 'includes/block-register.php';
 
 /**
  * Load plugin text domain for translations
