@@ -3,7 +3,7 @@
  * Plugin Name: Weightpal
  * Plugin URI: https://example.com/weightpal
  * Description: AI-powered weight loss coaching using Google Gemini API. Provides personalized advice, meal plans, and exercise schedules.
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: Ken Vu
  * Author URI: https://example.com
  * Text Domain: weightpal
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'WEIGHTPAL_VERSION', '1.0.6' );
+define( 'WEIGHTPAL_VERSION', '1.0.7' );
 define( 'WEIGHTPAL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WEIGHTPAL_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WEIGHTPAL_PLUGIN_FILE', __FILE__ );

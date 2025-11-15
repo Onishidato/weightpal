@@ -281,19 +281,20 @@
 				});
 			}
 
-			// Generate PDF from meal plan data
-			function generatePDF(planData) {
-				if (typeof jsPDF === 'undefined') {
-					alert('PDF library not loaded. Please refresh the page.');
-					return;
-				}
+		// Generate PDF from meal plan data
+		function generatePDF(planData) {
+			// jsPDF UMD module is accessed via window.jspdf.jsPDF
+			var jsPDF = window.jspdf && window.jspdf.jsPDF;
+			
+			if (typeof jsPDF === 'undefined') {
+				alert('PDF library not loaded. Please refresh the page.');
+				return;
+			}
 
-				var doc = new jsPDF();
-				var yPos = 20;
-				var lineHeight = 7;
-				var pageHeight = doc.internal.pageSize.height;
-
-				// Title
+			var doc = new jsPDF();
+			var yPos = 20;
+			var lineHeight = 7;
+			var pageHeight = doc.internal.pageSize.height;				// Title
 				doc.setFontSize(18);
 				doc.setFont(undefined, 'bold');
 				doc.text('Your Personalized Meal Plan', 20, yPos);
