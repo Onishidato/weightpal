@@ -14,14 +14,55 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Add admin menu page
  */
 function weightpal_add_admin_menu() {
+	// Main menu page
 	add_menu_page(
 		__( 'Weightpal AI', 'weightpal' ),           // Page title
 		__( 'Weightpal AI', 'weightpal' ),           // Menu title
 		'manage_options',                             // Capability
 		'weightpal',                                  // Menu slug
-		'weightpal_settings_page',                    // Callback function
+		'weightpal_general_settings_page',            // Callback function
 		'dashicons-heart',                            // Icon
 		30                                            // Position
+	);
+
+	// General Settings submenu
+	add_submenu_page(
+		'weightpal',                                  // Parent slug
+		__( 'General Settings', 'weightpal' ),        // Page title
+		__( 'General Settings', 'weightpal' ),        // Menu title
+		'manage_options',                             // Capability
+		'weightpal',                                  // Menu slug (same as parent to replace main menu)
+		'weightpal_general_settings_page'             // Callback function
+	);
+
+	// AI Advisor submenu
+	add_submenu_page(
+		'weightpal',                                  // Parent slug
+		__( 'AI Advisor Settings', 'weightpal' ),     // Page title
+		__( 'AI Advisor', 'weightpal' ),              // Menu title
+		'manage_options',                             // Capability
+		'weightpal-advisor',                          // Menu slug
+		'weightpal_advisor_settings_page'             // Callback function
+	);
+
+	// Meal Planner submenu
+	add_submenu_page(
+		'weightpal',                                  // Parent slug
+		__( 'Meal Planner Settings', 'weightpal' ),   // Page title
+		__( 'Meal Planner', 'weightpal' ),            // Menu title
+		'manage_options',                             // Capability
+		'weightpal-meal-planner',                     // Menu slug
+		'weightpal_meal_planner_settings_page'        // Callback function
+	);
+
+	// Debug Logs submenu
+	add_submenu_page(
+		'weightpal',                                  // Parent slug
+		__( 'Debug Logs', 'weightpal' ),              // Page title
+		__( 'Debug Logs', 'weightpal' ),              // Menu title
+		'manage_options',                             // Capability
+		'weightpal-debug',                            // Menu slug
+		'weightpal_debug_logs_page'                   // Callback function
 	);
 }
 add_action( 'admin_menu', 'weightpal_add_admin_menu' );
@@ -32,14 +73,14 @@ add_action( 'admin_menu', 'weightpal_add_admin_menu' );
 function weightpal_settings_init() {
 	// Register setting
 	register_setting(
-		'weightpal',                    // Option group
+		'weightpal_general',                // Option group
 		'weightpal_options',            // Option name
 		array(
 			'sanitize_callback' => 'weightpal_sanitize_options',
 			'default'           => array(
 				'gemini_api_key'          => '',
 				'gemini_model'            => 'gemini-1.5-flash',
-				'max_output_tokens'       => 2048,
+				'max_output_tokens'       => 4096,
 				'max_input_tokens'        => 8192,
 				'advisor_system_prompt'   => weightpal_get_default_system_prompt(),
 				'meal_planner_system_prompt' => weightpal_get_default_meal_planner_prompt(),
@@ -50,7 +91,7 @@ function weightpal_settings_init() {
 	// Add General Settings section
 	add_settings_section(
 		'weightpal_general_section',                      // Section ID
-		__( 'General Settings', 'weightpal' ),            // Section title
+		__( 'API Configuration', 'weightpal' ),           // Section title
 		'weightpal_general_section_callback',             // Callback function
 		'weightpal'                                       // Page slug
 	);
@@ -58,17 +99,17 @@ function weightpal_settings_init() {
 	// Add AI Advisor Settings section
 	add_settings_section(
 		'weightpal_advisor_section',                      // Section ID
-		__( 'Weightpal AI Advisor Settings', 'weightpal' ), // Section title
+		__( 'System Prompt Configuration', 'weightpal' ), // Section title
 		'weightpal_advisor_section_callback',             // Callback function
-		'weightpal'                                       // Page slug
+		'weightpal-advisor'                               // Page slug
 	);
 
 	// Add Meal Planner Settings section
 	add_settings_section(
 		'weightpal_meal_planner_section',                 // Section ID
-		__( 'Weightpal Meal Planner Settings', 'weightpal' ), // Section title
+		__( 'System Prompt Configuration', 'weightpal' ), // Section title
 		'weightpal_meal_planner_section_callback',        // Callback function
-		'weightpal'                                       // Page slug
+		'weightpal-meal-planner'                          // Page slug
 	);
 
 	// Add Gemini API Key field
@@ -77,7 +118,7 @@ function weightpal_settings_init() {
 		__( 'Gemini API Key', 'weightpal' ),          // Field title
 		'weightpal_api_key_render',                   // Callback function
 		'weightpal',                                  // Page slug
-		'weightpal_section'                           // Section ID
+		'weightpal_general_section'                   // Section ID
 	);
 
 	// Add Gemini Model field
@@ -86,16 +127,7 @@ function weightpal_settings_init() {
 		__( 'Gemini Model', 'weightpal' ),            // Field title
 		'weightpal_gemini_model_render',              // Callback function
 		'weightpal',                                  // Page slug
-		'weightpal_section'                           // Section ID
-	);
-
-	// Add System Prompt field
-	add_settings_field(
-		'weightpal_system_prompt',                    // Field ID
-		__( 'System Prompt', 'weightpal' ),           // Field title
-		'weightpal_system_prompt_render',             // Callback function
-		'weightpal',                                  // Page slug
-		'weightpal_section'                           // Section ID
+		'weightpal_general_section'                   // Section ID
 	);
 
 	// Add Max Output Tokens field
@@ -104,7 +136,7 @@ function weightpal_settings_init() {
 		__( 'Maximum Output Tokens', 'weightpal' ),   // Field title
 		'weightpal_max_output_tokens_render',         // Callback function
 		'weightpal',                                  // Page slug
-		'weightpal_section'                           // Section ID
+		'weightpal_general_section'                   // Section ID
 	);
 
 	// Add Max Input Tokens field
@@ -113,16 +145,100 @@ function weightpal_settings_init() {
 		__( 'Maximum Input Tokens', 'weightpal' ),    // Field title
 		'weightpal_max_input_tokens_render',          // Callback function
 		'weightpal',                                  // Page slug
-		'weightpal_section'                           // Section ID
+		'weightpal_general_section'                   // Section ID
+	);
+
+	// Add AI Advisor System Prompt field
+	add_settings_field(
+		'weightpal_advisor_system_prompt',            // Field ID
+		__( 'AI Advisor System Prompt', 'weightpal' ), // Field title
+		'weightpal_advisor_system_prompt_render',     // Callback function
+		'weightpal-advisor',                          // Page slug
+		'weightpal_advisor_section'                   // Section ID
+	);
+
+	// Add Meal Planner System Prompt field
+	add_settings_field(
+		'weightpal_meal_planner_system_prompt',       // Field ID
+		__( 'Meal Planner System Prompt', 'weightpal' ), // Field title
+		'weightpal_meal_planner_system_prompt_render', // Callback function
+		'weightpal-meal-planner',                     // Page slug
+		'weightpal_meal_planner_section'              // Section ID
 	);
 }
 add_action( 'admin_init', 'weightpal_settings_init' );
 
 /**
- * Sanitize options
+ * Render Debug Logs page
+ */
+function weightpal_debug_logs_page() {
+	// Check user capabilities
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	// Handle clear logs action
+	if ( isset( $_POST['weightpal_clear_logs'] ) && check_admin_referer( 'weightpal_clear_logs' ) ) {
+		delete_option( 'weightpal_api_logs' );
+		echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Logs cleared successfully.', 'weightpal' ) . '</p></div>';
+	}
+
+	// Get logs
+	$logs = get_option( 'weightpal_api_logs', array() );
+	?>
+	<div class="wrap">
+		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<p><?php esc_html_e( 'View the last 10 AI API responses for debugging purposes. This helps diagnose issues with JSON parsing and AI responses.', 'weightpal' ); ?></p>
+
+		<form method="post" style="margin-bottom: 20px;">
+			<?php wp_nonce_field( 'weightpal_clear_logs' ); ?>
+			<input type="hidden" name="weightpal_clear_logs" value="1">
+			<?php submit_button( __( 'Clear All Logs', 'weightpal' ), 'delete', 'submit', false ); ?>
+		</form>
+
+		<?php if ( empty( $logs ) ) : ?>
+			<div class="notice notice-info">
+				<p><?php esc_html_e( 'No API logs yet. Logs will appear here after you generate meal plans or get AI advice.', 'weightpal' ); ?></p>
+			</div>
+		<?php else : ?>
+			<?php foreach ( array_reverse( $logs ) as $index => $log ) : ?>
+				<div class="card" style="margin-bottom: 20px; max-width: 100%;">
+					<h2 style="margin-top: 0; padding: 15px; background: #f0f0f1; border-bottom: 1px solid #dcdcde;">
+						<?php echo esc_html( $log['type'] === 'meal_plan' ? 'Meal Plan Request' : 'AI Advisor Request' ); ?>
+						- <?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $log['timestamp'] ) ); ?>
+						<span style="float: right; color: <?php echo $log['success'] ? '#46b450' : '#dc3232'; ?>;">
+							<?php echo $log['success'] ? '✓ Success' : '✗ Failed'; ?>
+						</span>
+					</h2>
+					<div style="padding: 15px;">
+						<h3><?php esc_html_e( 'User Input:', 'weightpal' ); ?></h3>
+						<pre style="background: #f6f7f7; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;"><?php echo esc_html( $log['user_input'] ); ?></pre>
+
+						<h3><?php esc_html_e( 'AI Raw Response:', 'weightpal' ); ?></h3>
+						<pre style="background: #f6f7f7; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;"><?php echo esc_html( $log['ai_response'] ); ?></pre>
+
+						<?php if ( ! $log['success'] && ! empty( $log['error'] ) ) : ?>
+							<h3 style="color: #dc3232;"><?php esc_html_e( 'Error:', 'weightpal' ); ?></h3>
+							<pre style="background: #fef7f1; padding: 10px; color: #dc3232; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;"><?php echo esc_html( $log['error'] ); ?></pre>
+						<?php endif; ?>
+
+						<?php if ( $log['success'] && ! empty( $log['parsed_json'] ) ) : ?>
+							<h3 style="color: #46b450;"><?php esc_html_e( 'Parsed JSON (Valid):', 'weightpal' ); ?></h3>
+							<pre style="background: #f0f6f0; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto;"><?php echo esc_html( json_encode( json_decode( $log['parsed_json'] ), JSON_PRETTY_PRINT ) ); ?></pre>
+						<?php endif; ?>
+					</div>
+				</div>
+			<?php endforeach; ?>
+		<?php endif; ?>
+	</div>
+	<?php
+}
+
+/**
+ * Sanitize settings
  *
- * @param array $input The input array from the form.
- * @return array Sanitized options array.
+ * @param array $input Raw input from form.
+ * @return array Sanitized input
  */
 function weightpal_sanitize_options( $input ) {
 	$sanitized = array();
@@ -135,8 +251,12 @@ function weightpal_sanitize_options( $input ) {
 		$sanitized['gemini_model'] = sanitize_text_field( $input['gemini_model'] );
 	}
 
-	if ( isset( $input['system_prompt'] ) ) {
-		$sanitized['system_prompt'] = sanitize_textarea_field( $input['system_prompt'] );
+	if ( isset( $input['advisor_system_prompt'] ) ) {
+		$sanitized['advisor_system_prompt'] = sanitize_textarea_field( $input['advisor_system_prompt'] );
+	}
+
+	if ( isset( $input['meal_planner_system_prompt'] ) ) {
+		$sanitized['meal_planner_system_prompt'] = sanitize_textarea_field( $input['meal_planner_system_prompt'] );
 	}
 
 	if ( isset( $input['max_output_tokens'] ) ) {
@@ -157,10 +277,10 @@ function weightpal_sanitize_options( $input ) {
 }
 
 /**
- * Section callback
+ * Section callback - General Settings
  */
-function weightpal_section_callback() {
-	echo '<p>' . esc_html__( 'Configure your Weightpal AI settings below. You will need a Google Gemini API key to use this plugin.', 'weightpal' ) . '</p>';
+function weightpal_general_section_callback() {
+	echo '<p>' . esc_html__( 'Configure your API settings and token limits. These settings apply to all Weightpal features.', 'weightpal' ) . '</p>';
 	echo '<p>' . sprintf(
 		wp_kses(
 			/* translators: %s: URL to Google AI Studio */
@@ -175,6 +295,20 @@ function weightpal_section_callback() {
 		),
 		esc_url( 'https://makersuite.google.com/app/apikey' )
 	) . '</p>';
+}
+
+/**
+ * Section callback - AI Advisor Settings
+ */
+function weightpal_advisor_section_callback() {
+	echo '<p>' . esc_html__( 'Customize the AI advisor behavior and system prompt for personalized weight loss coaching.', 'weightpal' ) . '</p>';
+}
+
+/**
+ * Section callback - Meal Planner Settings
+ */
+function weightpal_meal_planner_section_callback() {
+	echo '<p>' . esc_html__( 'Customize the meal planner behavior and system prompt for personalized meal planning.', 'weightpal' ) . '</p>';
 }
 
 /**
@@ -366,24 +500,60 @@ add_action( 'wp_ajax_weightpal_refresh_models', 'weightpal_ajax_refresh_models' 
 /**
  * Render System Prompt field
  */
-function weightpal_system_prompt_render() {
+/**
+ * Render AI Advisor System Prompt field
+ */
+function weightpal_advisor_system_prompt_render() {
 	$options       = get_option( 'weightpal_options' );
-	$system_prompt = isset( $options['system_prompt'] ) ? $options['system_prompt'] : weightpal_get_default_system_prompt();
+	$system_prompt = isset( $options['advisor_system_prompt'] ) ? $options['advisor_system_prompt'] : weightpal_get_default_system_prompt();
 	?>
 	<textarea 
-		name="weightpal_options[system_prompt]" 
-		id="weightpal_system_prompt"
+		name="weightpal_options[advisor_system_prompt]" 
+		id="weightpal_advisor_system_prompt"
 		rows="12" 
 		class="large-text code"
-		placeholder="<?php esc_attr_e( 'Enter the system prompt for the AI', 'weightpal' ); ?>"
+		placeholder="<?php esc_attr_e( 'Enter the system prompt for the AI Advisor', 'weightpal' ); ?>"
 	><?php echo esc_textarea( $system_prompt ); ?></textarea>
 	<p class="description">
-		<?php esc_html_e( 'This is the system prompt that will be sent to the Gemini API. It defines how the AI should respond to user queries.', 'weightpal' ); ?>
+		<?php esc_html_e( 'This system prompt defines how the AI should respond to weight loss coaching queries.', 'weightpal' ); ?>
 	</p>
 	<p>
-		<button type="button" class="button" onclick="document.getElementById('weightpal_system_prompt').value = '<?php echo esc_js( weightpal_get_default_system_prompt() ); ?>';">
+		<button type="button" class="button" onclick="document.getElementById('weightpal_advisor_system_prompt').value = '<?php echo esc_js( weightpal_get_default_system_prompt() ); ?>';">
 			<?php esc_html_e( 'Reset to Default', 'weightpal' ); ?>
 		</button>
+	</p>
+	<?php
+}
+
+/**
+ * Render Meal Planner System Prompt field
+ */
+function weightpal_meal_planner_system_prompt_render() {
+	$options       = get_option( 'weightpal_options' );
+	$system_prompt = isset( $options['meal_planner_system_prompt'] ) ? $options['meal_planner_system_prompt'] : weightpal_get_default_meal_planner_prompt();
+	
+	// Check if the prompt contains JSON instructions
+	$has_json_instructions = ( stripos( $system_prompt, 'JSON' ) !== false && stripos( $system_prompt, 'days' ) !== false );
+	
+	if ( ! $has_json_instructions ) {
+		echo '<div class="notice notice-warning inline" style="margin: 10px 0; padding: 10px;">';
+		echo '<p><strong>' . esc_html__( 'Warning:', 'weightpal' ) . '</strong> ';
+		echo esc_html__( 'Your system prompt does not appear to include JSON formatting instructions. Click "Reset to Default" below to use the updated prompt that ensures proper JSON output.', 'weightpal' );
+		echo '</p></div>';
+	}
+	?>
+	<textarea 
+		name="weightpal_options[meal_planner_system_prompt]" 
+		id="weightpal_meal_planner_system_prompt"
+		rows="12" 
+		class="large-text code"
+		placeholder="<?php esc_attr_e( 'Enter the system prompt for the Meal Planner', 'weightpal' ); ?>"
+	><?php echo esc_textarea( $system_prompt ); ?></textarea>
+	<p class="description">
+		<?php esc_html_e( 'This system prompt defines how the AI should respond to meal planning requests. The prompt MUST instruct the AI to return ONLY JSON format.', 'weightpal' ); ?>
+	</p>
+	<p>
+		<button type="button" class="button button-secondary" onclick="if(confirm('<?php esc_attr_e( 'This will replace your current prompt with the default JSON-focused prompt. Continue?', 'weightpal' ); ?>')) { document.getElementById('weightpal_meal_planner_system_prompt').value = '<?php echo esc_js( weightpal_get_default_meal_planner_prompt() ); ?>'; }"><?php esc_html_e( 'Reset to Default', 'weightpal' ); ?></button>
 	</p>
 	<?php
 }
@@ -435,9 +605,9 @@ function weightpal_max_input_tokens_render() {
 }
 
 /**
- * Render settings page
+ * Render General Settings page
  */
-function weightpal_settings_page() {
+function weightpal_general_settings_page() {
 	// Check user capabilities
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
@@ -457,12 +627,12 @@ function weightpal_settings_page() {
 	settings_errors( 'weightpal_messages' );
 	?>
 	<div class="wrap">
-		<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+		<h1><?php esc_html_e( 'Weightpal AI - General Settings', 'weightpal' ); ?></h1>
 		
 		<form action="options.php" method="post">
 			<?php
-			// Output security fields for the registered setting "weightpal"
-			settings_fields( 'weightpal' );
+			// Output security fields for the registered setting
+			settings_fields( 'weightpal_general' );
 			
 			// Output setting sections and their fields
 			do_settings_sections( 'weightpal' );
@@ -477,11 +647,99 @@ function weightpal_settings_page() {
 		<h2><?php esc_html_e( 'About Weightpal', 'weightpal' ); ?></h2>
 		<p><?php esc_html_e( 'Weightpal is an AI-powered weight loss coaching plugin that uses Google Gemini to provide personalized advice, meal plans, and exercise schedules.', 'weightpal' ); ?></p>
 		
-		<h3><?php esc_html_e( 'API Endpoint', 'weightpal' ); ?></h3>
+		<h3><?php esc_html_e( 'API Endpoints', 'weightpal' ); ?></h3>
 		<p>
+			<strong><?php esc_html_e( 'AI Advisor:', 'weightpal' ); ?></strong><br>
 			<code><?php echo esc_html( rest_url( 'weightpal/v1/advice' ) ); ?></code>
 		</p>
-		<p><?php esc_html_e( 'Use this endpoint to make POST requests with user data (weight, height, routine, userQuery).', 'weightpal' ); ?></p>
+		<p>
+			<strong><?php esc_html_e( 'Meal Planner:', 'weightpal' ); ?></strong><br>
+			<code><?php echo esc_html( rest_url( 'weightpal/v1/meal-plan' ) ); ?></code>
+		</p>
+	</div>
+	<?php
+}
+
+/**
+ * Render AI Advisor Settings page
+ */
+function weightpal_advisor_settings_page() {
+	// Check user capabilities
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	// Show success message if settings were saved
+	if ( isset( $_GET['settings-updated'] ) ) {
+		add_settings_error(
+			'weightpal_messages',
+			'weightpal_message',
+			__( 'Settings saved successfully!', 'weightpal' ),
+			'success'
+		);
+	}
+
+	// Show error/success messages
+	settings_errors( 'weightpal_messages' );
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Weightpal AI - Advisor Settings', 'weightpal' ); ?></h1>
+		<p><?php esc_html_e( 'Configure the AI advisor system prompt to customize how the AI responds to weight loss coaching queries.', 'weightpal' ); ?></p>
+		
+		<form action="options.php" method="post">
+			<?php
+			// Output security fields
+			settings_fields( 'weightpal_general' );
+			
+			// Output setting sections and their fields
+			do_settings_sections( 'weightpal-advisor' );
+			
+			// Output save settings button
+			submit_button( __( 'Save Settings', 'weightpal' ) );
+			?>
+		</form>
+	</div>
+	<?php
+}
+
+/**
+ * Render Meal Planner Settings page
+ */
+function weightpal_meal_planner_settings_page() {
+	// Check user capabilities
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	// Show success message if settings were saved
+	if ( isset( $_GET['settings-updated'] ) ) {
+		add_settings_error(
+			'weightpal_messages',
+			'weightpal_message',
+			__( 'Settings saved successfully!', 'weightpal' ),
+			'success'
+		);
+	}
+
+	// Show error/success messages
+	settings_errors( 'weightpal_messages' );
+	?>
+	<div class="wrap">
+		<h1><?php esc_html_e( 'Weightpal AI - Meal Planner Settings', 'weightpal' ); ?></h1>
+		<p><?php esc_html_e( 'Configure the meal planner system prompt to customize how the AI generates personalized meal plans.', 'weightpal' ); ?></p>
+		
+		<form action="options.php" method="post">
+			<?php
+			// Output security fields
+			settings_fields( 'weightpal_general' );
+			
+			// Output setting sections and their fields
+			do_settings_sections( 'weightpal-meal-planner' );
+			
+			// Output save settings button
+			submit_button( __( 'Save Settings', 'weightpal' ) );
+			?>
+		</form>
 	</div>
 	<?php
 }

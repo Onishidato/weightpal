@@ -140,7 +140,7 @@ function weightpal_get_ai_advice( $request ) {
 
 	$api_key           = $options['gemini_api_key'];
 	$gemini_model      = ! empty( $options['gemini_model'] ) ? $options['gemini_model'] : 'gemini-1.5-flash';
-	$system_prompt     = ! empty( $options['system_prompt'] ) ? $options['system_prompt'] : weightpal_get_default_system_prompt();
+	$system_prompt     = ! empty( $options['advisor_system_prompt'] ) ? $options['advisor_system_prompt'] : weightpal_get_default_system_prompt();
 	$max_output_tokens = ! empty( $options['max_output_tokens'] ) ? $options['max_output_tokens'] : 2048;
 
 	// Construct user prompt
@@ -155,6 +155,16 @@ function weightpal_get_ai_advice( $request ) {
 
 	// Call Gemini API
 	$ai_response = weightpal_call_gemini_api( $api_key, $gemini_model, $system_prompt, $user_prompt, $max_output_tokens );
+
+	// Log the request and response for debugging
+	weightpal_log_api_request(
+		'advisor',
+		$user_prompt,
+		is_wp_error( $ai_response ) ? $ai_response->get_error_message() : $ai_response,
+		! is_wp_error( $ai_response ),
+		is_wp_error( $ai_response ) ? $ai_response->get_error_message() : '',
+		''
+	);
 
 	// Check for errors
 	if ( is_wp_error( $ai_response ) ) {
@@ -195,6 +205,9 @@ function weightpal_get_ai_advice( $request ) {
  * @return WP_REST_Response|WP_Error Response or error.
  */
 function weightpal_generate_meal_plan( $request ) {
+	// Start output buffering to catch any stray output
+	ob_start();
+	
 	try {
 		// Get POST data
 		$dietary_preferences    = $request->get_param( 'dietaryPreferences' );
@@ -219,58 +232,68 @@ function weightpal_generate_meal_plan( $request ) {
 		$gemini_model      = ! empty( $options['gemini_model'] ) ? $options['gemini_model'] : 'gemini-1.5-flash';
 		$max_output_tokens = ! empty( $options['max_output_tokens'] ) ? $options['max_output_tokens'] : 2048;
 
-		// Construct system prompt for meal planning
-		$system_prompt = "You are 'Weightpal Meal Planner,' an expert nutritionist and meal planning specialist. Your goal is to create personalized, balanced, and delicious meal plans.\n\n";
-		$system_prompt .= "When creating meal plans, you must:\n";
-		$system_prompt .= "1. Provide detailed daily meal plans with specific meals for breakfast, lunch, dinner, and snacks\n";
-		$system_prompt .= "2. Include approximate calorie counts for each meal\n";
-		$system_prompt .= "3. Ensure nutritional balance (proteins, carbs, healthy fats, vitamins)\n";
-		$system_prompt .= "4. Respect all dietary preferences and allergies mentioned\n";
-		$system_prompt .= "5. Make meals practical, achievable, and budget-friendly unless specified otherwise\n";
-		$system_prompt .= "6. Include simple cooking instructions or meal prep tips when relevant\n";
-		$system_prompt .= "7. Ensure variety across days to prevent meal fatigue\n\n";
-		$system_prompt .= "Always encourage users to adjust portions based on their individual needs and consult healthcare professionals for specific dietary concerns.";
+		// Get system prompt for meal planning
+		$system_prompt = ! empty( $options['meal_planner_system_prompt'] ) ? $options['meal_planner_system_prompt'] : weightpal_get_default_meal_planner_prompt();
 
-		// Construct user prompt
-		$user_prompt = "Please create a personalized {$plan_days}-day meal plan with the following specifications:\n\n";
-		$user_prompt .= "**Daily Calorie Target:** {$calorie_target} calories\n";
+		// Construct user prompt - keep it minimal to avoid encouraging text responses
+		$user_prompt = "Create {$plan_days}-day meal plan. ";
+		$user_prompt .= "Daily calories: {$calorie_target}. ";
 
 		if ( ! empty( $dietary_preferences ) ) {
-			$user_prompt .= "**Dietary Preferences:** {$dietary_preferences}\n";
+			$user_prompt .= "Diet: {$dietary_preferences}. ";
 		}
 
 		if ( ! empty( $allergies ) ) {
-			$user_prompt .= "**Food Allergies/Restrictions:** {$allergies}\n";
+			$user_prompt .= "Allergies: {$allergies}. ";
 		}
 
 		if ( ! empty( $additional_preferences ) ) {
-			$user_prompt .= "**Additional Preferences:** {$additional_preferences}\n";
+			$user_prompt .= "Preferences: {$additional_preferences}. ";
 		}
 
-		$user_prompt .= "\nPlease format the meal plan clearly with:\n";
-		$user_prompt .= "- Day-by-day breakdown\n";
-		$user_prompt .= "- Meal times (Breakfast, Lunch, Dinner, Snacks)\n";
-		$user_prompt .= "- Specific food items and portions\n";
-		$user_prompt .= "- Approximate calories per meal\n";
-		$user_prompt .= "- Any prep tips or cooking notes\n";
+		$user_prompt .= "Return JSON only.";
 
-		// Call Gemini API
-		$ai_response = weightpal_call_gemini_api( $api_key, $gemini_model, $system_prompt, $user_prompt, $max_output_tokens );
+		// Call Gemini API with JSON mode enabled
+		$ai_response = weightpal_call_gemini_api( $api_key, $gemini_model, $system_prompt, $user_prompt, $max_output_tokens, true );
 
 		// Check for errors
 		if ( is_wp_error( $ai_response ) ) {
 			return $ai_response;
 		}
 
-		// Return successful response
+		// Parse and validate JSON response
+		$meal_plan_json = weightpal_parse_meal_plan_json( $ai_response );
+
+		// Log the request and response for debugging
+		weightpal_log_api_request(
+			'meal_plan',
+			json_encode( $request->get_params() ),
+			$ai_response,
+			! is_wp_error( $meal_plan_json ),
+			is_wp_error( $meal_plan_json ) ? $meal_plan_json->get_error_message() : '',
+			is_wp_error( $meal_plan_json ) ? '' : json_encode( $meal_plan_json )
+		);
+
+		if ( is_wp_error( $meal_plan_json ) ) {
+			ob_end_clean(); // Clean any output
+			return $meal_plan_json;
+		}
+
+		// Clean output buffer
+		ob_end_clean();
+
+		// Return successful response with parsed JSON as array (not string)
 		return new WP_REST_Response(
 			array(
 				'success' => true,
-				'data'    => $ai_response,
+				'data'    => $meal_plan_json, // Already a PHP array from json_decode
 			),
 			200
 		);
 	} catch ( Exception $e ) {
+		// Clean output buffer
+		ob_end_clean();
+		
 		// Log the error
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'Weightpal Meal Plan Error: ' . $e->getMessage() );
@@ -289,6 +312,84 @@ function weightpal_generate_meal_plan( $request ) {
 }
 
 /**
+ * Parse and validate meal plan JSON response
+ *
+ * @param string $response The AI response text.
+ * @return array|WP_Error Parsed JSON array or error.
+ */
+function weightpal_parse_meal_plan_json( $response ) {
+	// Remove markdown code blocks if present
+	$response = preg_replace( '/```json\s*/i', '', $response );
+	$response = preg_replace( '/```\s*$/i', '', $response );
+	$response = preg_replace( '/^```\s*/i', '', $response );
+	
+	// Remove any leading/trailing text that's not part of JSON
+	// Find the first { and last }
+	$first_brace = strpos( $response, '{' );
+	$last_brace = strrpos( $response, '}' );
+	
+	if ( $first_brace !== false && $last_brace !== false && $last_brace > $first_brace ) {
+		$response = substr( $response, $first_brace, $last_brace - $first_brace + 1 );
+	}
+	
+	$response = trim( $response );
+
+	// Try to decode JSON
+	$json_data = json_decode( $response, true );
+
+	if ( json_last_error() !== JSON_ERROR_NONE ) {
+		// Log the error with more details
+		$error_msg = json_last_error_msg();
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Weightpal JSON Parse Error: ' . $error_msg );
+			error_log( 'First 500 chars of response: ' . substr( $response, 0, 500 ) );
+			error_log( 'Last 200 chars of response: ' . substr( $response, -200 ) );
+		}
+
+		return new WP_Error(
+			'json_parse_error',
+			sprintf(
+				/* translators: %s: JSON error message */
+				__( 'Failed to parse meal plan. The AI response was not valid JSON. Error: %s. Please check the Debug Logs tab for more details.', 'weightpal' ),
+				$error_msg
+			),
+			array( 'status' => 500 )
+		);
+	}
+
+	// Validate required fields
+	if ( ! isset( $json_data['days'] ) || ! is_array( $json_data['days'] ) ) {
+		return new WP_Error(
+			'invalid_meal_plan',
+			__( 'Invalid meal plan structure. The response is missing the required "days" array. Please check the Debug Logs tab to see what the AI returned.', 'weightpal' ),
+			array( 'status' => 500 )
+		);
+	}
+
+	// Validate that days array is not empty
+	if ( empty( $json_data['days'] ) ) {
+		return new WP_Error(
+			'empty_meal_plan',
+			__( 'The meal plan has no days. Please try again with different parameters.', 'weightpal' ),
+			array( 'status' => 500 )
+		);
+	}
+
+	// Validate structure of first day to ensure it has meals
+	if ( isset( $json_data['days'][0] ) ) {
+		if ( ! isset( $json_data['days'][0]['meals'] ) || ! is_array( $json_data['days'][0]['meals'] ) ) {
+			return new WP_Error(
+				'invalid_day_structure',
+				__( 'Invalid meal plan structure. Days must contain a "meals" array. Please check the Debug Logs tab.', 'weightpal' ),
+				array( 'status' => 500 )
+			);
+		}
+	}
+
+	return $json_data;
+}
+
+/**
  * Call Gemini API
  *
  * @param string $api_key          The Gemini API key.
@@ -296,9 +397,10 @@ function weightpal_generate_meal_plan( $request ) {
  * @param string $system_prompt    The system prompt.
  * @param string $user_prompt      The user prompt.
  * @param int    $max_output_tokens Maximum output tokens.
+ * @param bool   $json_mode        Whether to force JSON output mode.
  * @return string|WP_Error AI response text or error.
  */
-function weightpal_call_gemini_api( $api_key, $model, $system_prompt, $user_prompt, $max_output_tokens ) {
+function weightpal_call_gemini_api( $api_key, $model, $system_prompt, $user_prompt, $max_output_tokens, $json_mode = false ) {
 	// Increase PHP execution time limit if needed
 	$original_time_limit = ini_get( 'max_execution_time' );
 	if ( $original_time_limit > 0 && $original_time_limit < 180 ) {
@@ -313,7 +415,7 @@ function weightpal_call_gemini_api( $api_key, $model, $system_prompt, $user_prom
 	$retry_delay = 2; // seconds
 
 	for ( $attempt = 1; $attempt <= $max_retries; $attempt++ ) {
-		$response = weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens );
+		$response = weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens, $json_mode );
 
 		// If not an error, return the response
 		if ( ! is_wp_error( $response ) ) {
@@ -343,9 +445,24 @@ function weightpal_call_gemini_api( $api_key, $model, $system_prompt, $user_prom
  * @param string $system_prompt    The system prompt.
  * @param string $user_prompt      The user prompt.
  * @param int    $max_output_tokens Maximum output tokens.
+ * @param bool   $json_mode        Whether to force JSON output mode.
  * @return string|WP_Error AI response text or error.
  */
-function weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens ) {
+function weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, $max_output_tokens, $json_mode = false ) {
+
+	// Use lower temperature for JSON mode to ensure consistent structure
+	$temperature = $json_mode ? 0.3 : 0.7;
+
+	// Prepare generation config
+	$generation_config = array(
+		'maxOutputTokens' => $max_output_tokens,
+		'temperature'     => $temperature,
+		'topP'            => 0.8,
+		'topK'            => 40,
+	);
+
+	// Note: responseMimeType is not supported in current Gemini API version
+	// We rely on strict system prompt instructions for JSON output
 
 	// Prepare request body
 	$body = array(
@@ -358,12 +475,7 @@ function weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, 
 				),
 			),
 		),
-		'generationConfig' => array(
-			'maxOutputTokens' => $max_output_tokens,
-			'temperature'     => 0.7,
-			'topP'            => 0.8,
-			'topK'            => 40,
-		),
+		'generationConfig' => $generation_config,
 		'safetySettings'   => array(
 			array(
 				'category'  => 'HARM_CATEGORY_HARASSMENT',
@@ -392,7 +504,7 @@ function weightpal_make_gemini_request( $api_url, $system_prompt, $user_prompt, 
 				'Content-Type' => 'application/json',
 			),
 			'body'    => wp_json_encode( $body ),
-			'timeout' => 120, // Increased to 120 seconds for longer responses
+			'timeout' => 180, // 3 minutes for longer meal plans
 		)
 	);
 
@@ -482,3 +594,37 @@ function weightpal_add_cors_headers() {
 	header( 'Access-Control-Max-Age: 86400' );
 }
 add_action( 'rest_api_init', 'weightpal_add_cors_headers' );
+
+/**
+ * Log API requests for debugging
+ *
+ * @param string $type The type of request (advisor or meal_plan).
+ * @param string $user_input The user input/prompt.
+ * @param string $ai_response The raw AI response.
+ * @param bool   $success Whether the request was successful.
+ * @param string $error Error message if failed.
+ * @param string $parsed_json The parsed JSON if successful.
+ */
+function weightpal_log_api_request( $type, $user_input, $ai_response, $success, $error = '', $parsed_json = '' ) {
+	// Get existing logs
+	$logs = get_option( 'weightpal_api_logs', array() );
+
+	// Add new log entry
+	$logs[] = array(
+		'timestamp'   => time(),
+		'type'        => $type,
+		'user_input'  => $user_input,
+		'ai_response' => $ai_response,
+		'success'     => $success,
+		'error'       => $error,
+		'parsed_json' => $parsed_json,
+	);
+
+	// Keep only the last 10 logs
+	if ( count( $logs ) > 10 ) {
+		$logs = array_slice( $logs, -10 );
+	}
+
+	// Update option
+	update_option( 'weightpal_api_logs', $logs, false );
+}

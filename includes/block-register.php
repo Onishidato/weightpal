@@ -367,11 +367,20 @@ function weightpal_render_block( $attributes, $content ) {
  * @return string Rendered block HTML.
  */
 function weightpal_render_meal_planner_block( $attributes, $content ) {
+	// Enqueue jsPDF library from CDN
+	wp_enqueue_script(
+		'jspdf',
+		'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+		array(),
+		'2.5.1',
+		true
+	);
+
 	// Enqueue frontend script
 	wp_enqueue_script(
 		'weightpal-meal-planner-frontend',
 		WEIGHTPAL_PLUGIN_URL . 'blocks/meal-planner/frontend.js',
-		array(),
+		array( 'jspdf' ),
 		WEIGHTPAL_VERSION,
 		true
 	);
@@ -383,6 +392,7 @@ function weightpal_render_meal_planner_block( $attributes, $content ) {
 		array(
 			'apiUrl'   => rest_url( 'weightpal/v1/meal-plan' ),
 			'nonce'    => wp_create_nonce( 'wp_rest' ),
+			'adminUrl' => admin_url(),
 			'messages' => array(
 				'loading'          => __( 'Generating your personalized meal plan...', 'weightpal' ),
 				'error'            => __( 'An error occurred. Please try again.', 'weightpal' ),
@@ -520,9 +530,14 @@ function weightpal_render_meal_planner_block( $attributes, $content ) {
 			<div class="weightpal-response" style="display: none;">
 				<div class="weightpal-meal-plan-header">
 					<h3><?php esc_html_e( 'Your Personalized Meal Plan', 'weightpal' ); ?></h3>
-					<button type="button" class="weightpal-print-button">
-						<?php esc_html_e( '🖨️ Print Plan', 'weightpal' ); ?>
-					</button>
+					<div class="meal-plan-actions-header">
+						<button type="button" class="weightpal-print-button">
+							<?php esc_html_e( '🖨️ Print', 'weightpal' ); ?>
+						</button>
+						<button type="button" class="weightpal-download-pdf-button">
+							<?php esc_html_e( '📄 Download PDF', 'weightpal' ); ?>
+						</button>
+					</div>
 				</div>
 				<div class="weightpal-meal-plan-content"></div>
 				<div class="weightpal-meal-plan-actions">
